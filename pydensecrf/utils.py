@@ -84,6 +84,24 @@ def softmax_to_unary(sm, GT_PROB=1):
     scale = None if GT_PROB == 1 else GT_PROB
     return unary_from_softmax(sm, scale, clip=None)
 
+def create_pairwise_gaussian_occ(sdims,xyzlist):
+    """
+    Util function that create pairwise gaussian potentials. This works for all
+    image dimensions. For the 2D case does the same as
+    `DenseCRF2D.addPairwiseGaussian`.
+
+    Parameters
+    ----------
+    sdims: list or tuple
+        The scaling factors per dimension. This is referred to `sxy` in
+        `DenseCRF2D.addPairwiseGaussian`.
+    shape: list or tuple
+        The shape the CRF has.
+
+    """
+    feats = np.concatenate([np.array(f).reshape((-1,1)) for f in xyzlist],axis=1)/(np.array(sdims).reshape((-1,1)))
+    return feats.astype(np.float32)
+
 
 def create_pairwise_gaussian(sdims, shape):
     """
@@ -156,6 +174,38 @@ def create_pairwise_bilateral(sdims, schan, img, chdim=-1):
     feats = np.concatenate([mesh, im_feat])
     return feats.reshape([feats.shape[0], -1])
 
+
+def create_pairwise_bilateral_occ(sdims, schan,xyzlist, chns):
+    """
+    Util function that create pairwise bilateral potentials. This works for
+    all image dimensions. For the 2D case does the same as
+    `DenseCRF2D.addPairwiseBilateral`.
+
+    Parameters
+    ----------
+    sdims: list or tuple
+        The scaling factors per dimension. This is referred to `sxy` in
+        `DenseCRF2D.addPairwiseBilateral`.
+    schan: list or tuple
+        The scaling factors per channel in the image. This is referred to
+        `srgb` in `DenseCRF2D.addPairwiseBilateral`.
+    img: numpy.array
+        The input image.
+    chdim: int, optional
+        This specifies where the channel dimension is in the image. For
+        example `chdim=2` for a RGB image of size (240, 300, 3). If the
+        image has no channel dimension (e.g. it has only one channel) use
+        `chdim=-1`.
+
+    """
+
+    feats_xyz = np.concatenate([np.array(f).reshape((-1,1)) for f in xyzlist],axis=1)/(np.array(sdims).reshape((-1,1)))
+    chns = np.concatenate([np.array(chns[c]).reshape((-1,1)) for c in chns],axis=1)/np.array(schan).reshape((1,-1))
+    chns = np.transpose(chns,(1,0))
+    feats = np.concatenate((feats_xyz,chns))
+
+
+    return feats.astype(np.float32)
 
 def _create_pairwise_gaussian_2d(sx, sy, shape):
     """
